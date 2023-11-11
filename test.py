@@ -26,6 +26,7 @@ def preprocess_image(image_path, transform=None):
 def predict_class(model, input_tensor):
     # Make predictions
     with torch.no_grad():
+        input_tensor = input_tensor.to(model.device)
         model_output = model(input_tensor)
         predicted_class = torch.argmax(model_output, dim=1).item()
 
