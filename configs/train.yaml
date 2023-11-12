@@ -1,5 +1,7 @@
 model:
   num_classes: 3
+  batch_size: 64
+  target_size: [224, 224]
   optimizer:
     name: Adam
     lr: 0.0001
