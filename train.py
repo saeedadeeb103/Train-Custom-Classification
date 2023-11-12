@@ -1,6 +1,7 @@
 from torchvision import transforms
 from omegaconf import DictConfig
 import torch
+import argparse
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -10,6 +11,8 @@ from pytorch_lightning.callbacks import EarlyStopping
 import hydra
 from dataset import CustomDataset
 from encoders import timm_backbones
+from pathlib import Path
+from omegaconf import OmegaConf
 
 
 
@@ -43,7 +46,6 @@ def main(cfg: DictConfig):
     test_loader = DataLoader(test_dataset,sampler= test_sampler, batch_size= cfg.model.batch_size)
 
     model = timm_backbones(encoder= cfg.model.encoder, num_classes=len(train_dataset.classes), optimizer_cfg=cfg.model.optimizer)
-    breakpoint()
     # Define a checkpoint callback to save the best model
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
@@ -83,4 +85,43 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Train your model.")
+    parser.add_argument("--encoder", type=str, default="mobilenetv2_100", help="Encoder architecture")
+    parser.add_argument("--num_classes", type=int, default=3, help="Number of classes")
+    parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
+    parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer")
+    parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate")
+    parser.add_argument("--weight_decay", type=float, default=3e-4, help="Weight decay")
+    parser.add_argument("--max_epochs", type=int, default=20, help="Maximum number of epochs")
+    parser.add_argument("--target_size", nargs="+", type=int, default=[224, 224], help="Target size for image resizing")
+    parser.add_argument("--train_path", type=str, default="/home/saeed101/projects/Train-Custom-Classification/dataset/train", help="Path to the training dataset")
+    parser.add_argument("--val_path", type=str, default="/home/saeed101/projects/Train-Custom-Classification/dataset/valid", help="Path to the validation dataset")
+    parser.add_argument("--test_path", type=str, default="/home/saeed101/projects/Train-Custom-Classification/dataset/test", help="Path to the test dataset")
+
+
+    args = parser.parse_args()
+
+    # Update the configuration using argparse arguments\
+    cfg_override= {'model': 
+                        {'encoder': args.encoder,
+                        'num_classes': args.num_classes,
+                        'batch_size': args.batch_size,
+                        'target_size': args.target_size,
+                        'max_epochs': args.max_epochs,
+                        'optimizer': 
+                            {'name': args.optimizer,
+                            'lr': args.lr,
+                            'weight_decay': args.weight_decay,
+                            }
+                        },
+                    'dataset': 
+                        {'train_path': args.train_path,
+                        'val_path': args.val_path,
+                        'test_path': args.test_path, 
+                        }
+            }
+
+    # Load the original configuration
+    cfg = OmegaConf.load("configs/train.yaml")
+    cfg = OmegaConf.merge(cfg, OmegaConf.create(cfg_override))
+    main(cfg)
