@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import EarlyStopping
 import hydra
 from dataset import CustomDataset
-from encoders import ResNet
+from encoders import timm_backbones
 
 
 
@@ -42,7 +42,8 @@ def main(cfg: DictConfig):
     val_loader = DataLoader(val_dataset, sampler= val_sampler  ,batch_size= cfg.model.batch_size )
     test_loader = DataLoader(test_dataset,sampler= test_sampler, batch_size= cfg.model.batch_size)
 
-    model = ResNet(encoder='resnet50', num_classes=len(train_dataset.classes), optimizer_cfg=cfg.model.optimizer)
+    model = timm_backbones(encoder= cfg.model.encoder, num_classes=len(train_dataset.classes), optimizer_cfg=cfg.model.optimizer)
+    breakpoint()
     # Define a checkpoint callback to save the best model
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
@@ -64,7 +65,7 @@ def main(cfg: DictConfig):
 
     # Initialize a PyTorch Lightning Trainer
     trainer = pl.Trainer(
-        max_epochs=1,
+        max_epochs=cfg.model.max_epochs,
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         # logger=logger, 
         check_val_every_n_epoch=1,

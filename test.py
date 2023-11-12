@@ -7,7 +7,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 from torchmetrics import Accuracy
 from dataset import CustomDataset
-from train import ResNet18
+from encoders import timm_backbones
 from omegaconf import DictConfig
 import hydra
 
@@ -53,7 +53,7 @@ def main(cfg: DictConfig):
     ])
 
 
-    model = ResNet18(num_classes=cfg.model.num_classes, optimizer_cfg=cfg.model.optimizer)
+    model = timm_backbones(encoder=cfg.model.encoder, num_classes=cfg.model.num_classes, optimizer_cfg=cfg.model.optimizer)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()

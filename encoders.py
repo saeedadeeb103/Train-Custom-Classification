@@ -3,7 +3,9 @@ import pytorch_lightning as pl
 import timm
 from torchmetrics import Accuracy
 import torch
-class ResNet(pl.LightningModule):
+
+
+class timm_backbones(pl.LightningModule):
     """
     PyTorch Lightning model for image classification using a ResNet-18 architecture.
 
@@ -26,15 +28,21 @@ class ResNet(pl.LightningModule):
         trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
         trainer.test(model, dataloaders=test_dataloader)
     """
-    def __init__(self, encoder='resnet18' , num_classes=2, optimizer_cfg=None):
+    def __init__(self, encoder='resnet18', num_classes=2, optimizer_cfg=None):
         super().__init__()
 
-        # Load a pretrained ResNet-18 model from timm
-        self.resnet = timm.create_model(encoder, pretrained=True)
+        self.encoder = encoder
+        self.model = timm.create_model(encoder, pretrained=True)
         self.accuracy = Accuracy(task="multiclass", num_classes=num_classes)
-        # Modify the final classification layer to match the number of classes in your dataset
-        in_features = self.resnet.fc.in_features
-        self.resnet.fc = torch.nn.Linear(in_features, num_classes)
+
+        # Modify the final classification layer to match the number of classes
+        in_features = self.model.fc.in_features if hasattr(self.model, 'fc') else self.model.classifier.in_features
+        final_layer = torch.nn.Linear(in_features, num_classes)
+        if hasattr(self.model, 'fc'):
+            self.model.fc = final_layer
+        else:
+            self.model.classifier = final_layer
+
         if optimizer_cfg is not None:
             optimizer_name = optimizer_cfg.name
             optimizer_lr = optimizer_cfg.lr
@@ -52,7 +60,7 @@ class ResNet(pl.LightningModule):
         print("Optimizer Used:", self.optimizer)
 
     def forward(self, x):
-        return self.resnet(x)
+        return self.model(x)
 
     def configure_optimizers(self):
         return self.optimizer
@@ -99,3 +107,5 @@ class ResNet(pl.LightningModule):
         loss = torch.nn.functional.cross_entropy(logits, y)
         preds = torch.argmax(logits, dim=1)
         return {'test_loss': loss, 'test_preds': preds, 'test_targets': y}
+
+
