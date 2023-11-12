@@ -23,14 +23,13 @@ A brief and catchy description of your project.
 
 ## Introduction
 
-Your project introduction goes here. Mention its purpose, key features, and any other relevant information. You may want to include badges for build status, license, or any other pertinent information.
+This project is an implementation of a PyTorch-based image classification model using various encoder architectures from the Timm library. The model is designed for flexibility, allowing users to easily fine-tune a pre-trained model for a specific number of classes in their dataset. 
 
 ## Features
 
-- List the key features of your project.
-- Feature 1
-- Feature 2
-- ...
+- Utilizes popular encoder architectures like ResNet, MobileNetV2, and EfficientNet from the Timm library.
+- Supports customization of the final classification layer to match the number of classes in your dataset.
+- Implements training, validation, and testing steps with PyTorch Lightning, making it easy to train and evaluate the model.
 
 ## Getting Started
 
@@ -38,11 +37,17 @@ Instructions on how to get the project up and running on a local machine.
 
 ### Prerequisites
 
-- Python 3.x
+- Python 3.8.16
+- Pytorch-lightning
 - PyTorch
-- Other dependencies...
+- timm
+- hydra-core
+- Other dependencies specified in `requirements.txt`
 
 ### Installation
 
 ```bash
+conda create -n ml python==3.8.16
+conda activate ml
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 pip install -r requirements.txt
