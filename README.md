@@ -51,3 +51,13 @@ conda create -n ml python==3.8.16
 conda activate ml
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 pip install -r requirements.txt
+```
+
+### Usage
+
+```bash 
+
+python train.py --encoder resnet18 --lr 0.001 --batch_size 128 --max_epochs 10 --train_path "/content/Train-Custom-Classification/dataset/train" --val_path "/content/Train-Custom-Classification/dataset/valid" --test_path "/content/Train-Custom-Classification/dataset/test" --optimizer "SGD" --num_classes 25
+
+```
+
