@@ -1,0 +1,5 @@
+omegaconf
+hydra-core
+pytorch-lightning
+timm
+torchmetrics
