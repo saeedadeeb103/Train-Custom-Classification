@@ -73,7 +73,7 @@ python train.py \
 
 ```
 
-## Tresting:
+## Testing:
 
 ```bash
 python test.py \
