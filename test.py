@@ -32,16 +32,16 @@ def predict_class(model, input_tensor):
 
     return predicted_class
 
-@hydra.main(config_path="configs",config_name="train")
+@hydra.main(config_path="configs",config_name="test")
 def main(cfg: DictConfig):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Specify the path to the saved model
-    model_path = '/home/saeed101/projects/ml/outputs/2023-11-11/12-43-30/model.pth'
+    model_path = cfg.model_path
     
-    train_dataset_path = '/home/saeed101/projects/ml/dataset/train'
+    train_dataset_path = cfg.test_path
 
     # Specify the path to the test dataset
-    image_path = "/home/saeed101/projects/ml/dataset/test/german shepherd/gs44_jpg.rf.fdcf10494ba04557bb52ed54f036e794.jpg"
+    image_path = cfg.image
     # Load class names
     class_names = load_class_names(train_dataset_path)
 
@@ -53,7 +53,7 @@ def main(cfg: DictConfig):
     ])
 
 
-    model = timm_backbones(encoder=cfg.model.encoder, num_classes=cfg.model.num_classes, optimizer_cfg=cfg.model.optimizer)
+    model = timm_backbones(encoder=cfg.model.encoder, num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()

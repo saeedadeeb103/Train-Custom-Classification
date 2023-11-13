@@ -1,0 +1,14 @@
+model:
+  encoder: 'mobilenetv2_100'
+  optimizer:
+    name: Adam
+    lr: 0.0001
+    weight_decay: 3e-4
+
+test_path: "/home/saeed101/projects/Train-Custom-Classification/dataset/test"
+model_path: "/home/saeed101/projects/Train-Custom-Classification/outputs/2023-11-13/13-36-22/model.pth"
+image: "/home/saeed101/projects/Train-Custom-Classification/dataset/test/rottweiler/r20_jpg.rf.976ac0507f63a48f4140fab4ad237153.jpg"
+num_classes: 3
+batch_size: 8
+target_size: [224, 224]
+max_epochs: 20

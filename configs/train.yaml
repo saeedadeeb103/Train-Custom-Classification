@@ -1,9 +1,5 @@
 model:
   encoder: 'mobilenetv2_100'
-  num_classes: 3
-  batch_size: 8
-  target_size: [224, 224]
-  max_epochs: 20
   optimizer:
     name: Adam
     lr: 0.0001
@@ -13,3 +9,9 @@ dataset:
   train_path: "/home/saeed101/projects/Train-Custom-Classification/dataset/train"
   val_path: "/home/saeed101/projects/Train-Custom-Classification/dataset/valid"
   test_path: "/home/saeed101/projects/Train-Custom-Classification/dataset/test"
+
+num_classes: 3
+batch_size: 8
+target_size: [224, 224]
+max_epochs: 20
+output_dir: outputs
