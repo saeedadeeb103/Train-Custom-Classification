@@ -53,9 +53,9 @@ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvi
 pip install -r requirements.txt
 ```
 
-### Usage
+## Usage
 
-## Training: 
+### Training: 
 ```bash 
 
 python train.py \
@@ -73,7 +73,7 @@ python train.py \
 
 ```
 
-## Testing:
+### Testing:
 
 ```bash
 python test.py \
