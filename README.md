@@ -55,9 +55,34 @@ pip install -r requirements.txt
 
 ### Usage
 
+## Training: 
 ```bash 
 
-python train.py --encoder resnet18 --lr 0.001 --batch_size 128 --max_epochs 10 --train_path "/content/Train-Custom-Classification/dataset/train" --val_path "/content/Train-Custom-Classification/dataset/valid" --test_path "/content/Train-Custom-Classification/dataset/test" --optimizer "SGD" --num_classes 25
+python train.py \
+  model.encoder=mobilenetv3_large_100 \
+  batch_size=4 \
+  target_size=[224,224] \
+  max_epochs=60 \
+  dataset.train_path='/content/Train-Custom-Classification/dataset/train' \
+  dataset.val_path='/content/Train-Custom-Classification/dataset/valid' \
+  dataset.test_path='/content/Train-Custom-Classification/dataset/test' \
+  model.optimizer.lr=0.0001 \
+  model.optimizer.weight_decay=3e-3 \
+  min_epochs=20 \
+  num_classes=3
+
+```
+
+## Tresting:
+
+```bash
+python test.py \
+  model.encoder=mobilenetv3_large_100 \
+  model.optimizer.name=Adam \
+  test_path=/content/Train-Custom-Classification/dataset/test \
+  model_path=/content/Train-Custom-Classification/outputs/2023-11-13/11-53-04/model.pth \
+  image='/content/Zebra Dove_229_0s.png' \
+  num_classes=3
 
 ```
 
