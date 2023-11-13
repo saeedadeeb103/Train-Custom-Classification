@@ -71,6 +71,7 @@ def main(cfg: DictConfig) -> None:
     # Initialize a PyTorch Lightning Trainer
     trainer = pl.Trainer(
         max_epochs=cfg.max_epochs,
+        min_epochs=cfg.min_epochs,
         accelerator='gpu' if torch.cuda.is_available() else 'cpu',
         logger=logger, 
         check_val_every_n_epoch=1,
