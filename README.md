@@ -2,7 +2,7 @@
 
 # Your Project Name
 
-A brief and catchy description of your project.
+A Deep learning Repo for training custom classification model using timm backbone
 
 ## Table of Contents
 
