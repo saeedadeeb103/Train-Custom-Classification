@@ -55,6 +55,27 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Dataset
+
+The data set format should be like this
+
+```bash 
+        Dataset/
+          train/
+            image1.jpg
+            image2.jpg
+            ...
+          valid/
+            image1.jpg
+            image2.jpg
+            ...
+          test/
+            image1.jpg
+            image2.jpg
+            ...
+  
+```
+
 ### Training: 
 ```bash 
 
