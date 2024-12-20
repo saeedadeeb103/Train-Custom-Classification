@@ -1,15 +1,16 @@
 model:
-  encoder: 'mobilenetv2_100'
+  encoder: 'resnet18'
   optimizer:
     name: Adam
-    lr: 3e-4
+    lr: 0.00001
     weight_decay: 3e-4
+  l1_lambda: 1e-5
 
 dataset: 
   root_path: "D:/Train-Custom-Classification/BW_CNN Model_16Ch/data"  # Single root directory
 
 num_classes: 4
-batch_size: 8
+batch_size: 4
 target_size: [224, 224]
 max_epochs: 20
 min_epochs: 10
