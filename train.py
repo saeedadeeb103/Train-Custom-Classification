@@ -35,9 +35,9 @@ def main(cfg: DictConfig) -> None:
         transforms.Resize(target_size),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
-    train_dataset = CustomDataset(root=cfg.dataset.train_path, transform=train_transform)
-    val_dataset = CustomDataset(root=cfg.dataset.val_path, transform=val_transform)
-    test_dataset = CustomDataset(root=cfg.dataset.test_path, transform=val_transform)
+    train_dataset = CustomDataset(root=cfg.dataset.root_path, subset="train", transform=train_transform)
+    val_dataset = CustomDataset(root=cfg.dataset.root_path, subset="val", transform=val_transform)
+    test_dataset = CustomDataset(root=cfg.dataset.root_path, subset="test", transform=val_transform)
     
 
     train_sampler = RandomSampler(train_dataset)
