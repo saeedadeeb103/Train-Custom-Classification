@@ -27,7 +27,7 @@ def main(cfg: DictConfig) -> None:
     train_transform = transforms.Compose([
         transforms.Resize(target_size),  # Resize images to 224x224 pixels
         transforms.ToTensor(),  # Convert images to tensor
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize images
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize images #testing
     ])
     val_transform = transforms.Compose([
         transforms.ToTensor(),
