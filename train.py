@@ -16,6 +16,8 @@ from omegaconf import OmegaConf
 from hydra.core.hydra_config import HydraConfig
 import os 
 
+
+
 @hydra.main(config_path="configs", config_name="train", version_base="1.2")
 def main(cfg: DictConfig) -> None:
 
@@ -23,32 +25,29 @@ def main(cfg: DictConfig) -> None:
     hydra = HydraConfig.get()
     target_size = tuple(cfg.target_size)
     train_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Resize(target_size),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomInvert(),
-        transforms.RandomAutocontrast()
+        transforms.Resize(target_size),  # Resize images to 224x224 pixels
+        transforms.ToTensor(),  # Convert images to tensor
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize images #testing
     ])
     val_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize(target_size),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
-    train_dataset = CustomDataset(root=cfg.dataset.train_path, transform=train_transform)
-    val_dataset = CustomDataset(root=cfg.dataset.val_path, transform=val_transform)
-    test_dataset = CustomDataset(root=cfg.dataset.test_path, transform=val_transform)
+    train_dataset = CustomDataset(root=cfg.dataset.root_path, subset="train", transform=train_transform)
+    val_dataset = CustomDataset(root=cfg.dataset.root_path, subset="val", transform=val_transform)
+    test_dataset = CustomDataset(root=cfg.dataset.root_path, subset="test", transform=val_transform)
     
 
     train_sampler = RandomSampler(train_dataset)
     val_sampler = SequentialSampler(val_dataset)
     test_sampler = SequentialSampler(test_dataset)
 
-    train_loader = DataLoader(train_dataset,sampler= train_sampler, batch_size= cfg.batch_size)
-    val_loader = DataLoader(val_dataset, sampler= val_sampler  ,batch_size= cfg.batch_size )
-    test_loader = DataLoader(test_dataset,sampler= test_sampler, batch_size= cfg.batch_size)
+    train_loader = DataLoader(train_dataset,sampler= train_sampler, batch_size= cfg.batch_size, num_workers=7)
+    val_loader = DataLoader(val_dataset, sampler= val_sampler  ,batch_size= cfg.batch_size, num_workers=7)
+    test_loader = DataLoader(test_dataset,sampler= test_sampler, batch_size= cfg.batch_size, num_workers=7)
 
-    model = timm_backbones(encoder= cfg.model.encoder, num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer)
+    model = timm_backbones(encoder= cfg.model.encoder, num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer, l1_lambda=cfg.model.l1_lambda)
     # Define a checkpoint callback to save the best model
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
@@ -60,7 +59,7 @@ def main(cfg: DictConfig) -> None:
     early_stop_callback = EarlyStopping(
         monitor='val_loss',
         min_delta=0.00,
-        patience=3,
+        patience=5,
         verbose=False,
         mode='max'
     )

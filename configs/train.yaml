@@ -1,18 +1,20 @@
 model:
-  encoder: 'mobilenetv2_100'
+  encoder: 'resnet18'
   optimizer:
     name: Adam
-    lr: 0.0001
+    lr: 0.00001
     weight_decay: 3e-4
+  l1_lambda: 1e-5
 
 dataset: 
-  train_path: "/home/saeed101/projects/Train-Custom-Classification/dataset/train"
-  val_path: "/home/saeed101/projects/Train-Custom-Classification/dataset/valid"
-  test_path: "/home/saeed101/projects/Train-Custom-Classification/dataset/test"
+  root_path: "D:/Train-Custom-Classification/BW_CNN Model_16Ch/data"  # Single root directory
 
-num_classes: 3
-batch_size: 8
+num_classes: 4
+batch_size: 4
 target_size: [224, 224]
 max_epochs: 20
 min_epochs: 10
 output_dir: outputs
+
+split_ratios: [0.7, 0.2, 0.10]  # Ratios for train, validation, and test splits
+seed: 42  # For reproducibility of random splits
