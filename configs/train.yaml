@@ -1,20 +1,27 @@
+
+input_type: "audio"  # Options: "audio" or "image"
+dataset_name: "emodb"
+
 model:
   encoder: 'resnet18'
   optimizer:
     name: Adam
     lr: 0.00001
     weight_decay: 3e-4
-  l1_lambda: 1e-5
+  l1_lambda: 0.0
 
 dataset: 
-  root_path: "D:/Train-Custom-Classification/BW_CNN Model_16Ch/data"  # Single root directory
+  root_path: "./data/emodb"  # Single root directory
+  sample_rate: 22050  # Only applicable for audio
+  n_mels: 128
+  n_fft: 1024  
+  duration: 1.4  # Only applicable for audio
+  target_size: [224, 224]  # Only applicable for images
+  split_ratios: [0.7, 0.2, 0.1]
 
 num_classes: 4
 batch_size: 4
-target_size: [224, 224]
 max_epochs: 20
 min_epochs: 10
 output_dir: outputs
-
-split_ratios: [0.7, 0.2, 0.10]  # Ratios for train, validation, and test splits
 seed: 42  # For reproducibility of random splits
