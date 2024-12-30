@@ -5,9 +5,9 @@ from sklearn.model_selection import train_test_split
 
 
 class CustomDataset(VisionDataset):
-    def __init__(self, root, subset="train", transform=None, target_transform=None, split_ratios=(0.7, 0.15, 0.15), seed=42):
-        super(CustomDataset, self).__init__(root, transform=transform, target_transform=target_transform)
-        self.root = root
+    def __init__(self, root_path, subset="train", transform=None, target_transform=None, split_ratios=(0.7, 0.15, 0.15), seed=42):
+        super(CustomDataset, self).__init__(root_path, transform=transform, target_transform=target_transform)
+        self.root = root_path
         self.subset = subset  # Can be "train", "val", or "test"
         self.split_ratios = split_ratios
         self.seed = seed

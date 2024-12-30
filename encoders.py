@@ -1,8 +1,9 @@
 import torch.optim as optim
 import pytorch_lightning as pl
 import timm
-from torchmetrics import Accuracy
+from torchmetrics import Accuracy, Precision, Recall, F1Score
 import torch
+
 
 
 class timm_backbones(pl.LightningModule):
@@ -33,15 +34,24 @@ class timm_backbones(pl.LightningModule):
 
         self.encoder = encoder
         self.model = timm.create_model(encoder, pretrained=True)
+        if self.model.default_cfg["input_size"][1] == 3:  # If model expects 3 channels
+            self.model.conv1 = torch.nn.Conv2d(
+                in_channels=1,  # Change to single channel
+                out_channels=self.model.conv1.out_channels,
+                kernel_size=self.model.conv1.kernel_size,
+                stride=self.model.conv1.stride,
+                padding=self.model.conv1.padding,
+                bias=False
+            )
+
         self.accuracy = Accuracy(task="multiclass", num_classes=num_classes)
-        self.l1_lambda = l1_lambda  # L1 regularization strength
-        # Modify the final classification layer to match the number of classes
-        in_features = self.model.fc.in_features if hasattr(self.model, 'fc') else self.model.classifier.in_features
-        final_layer = torch.nn.Linear(in_features, num_classes)
-        if hasattr(self.model, 'fc'):
-            self.model.fc = final_layer
-        else:
-            self.model.classifier = final_layer
+        self.precision = Precision(task="multiclass", num_classes=num_classes)
+        self.recall = Recall(task="multiclass", num_classes=num_classes)
+        self.f1 = F1Score(task="multiclass", num_classes=num_classes)
+
+        self.l1_lambda = l1_lambda
+        in_features = self.model.fc.in_features
+        self.model.fc = torch.nn.Linear(in_features, num_classes)
 
         if optimizer_cfg is not None:
             optimizer_name = optimizer_cfg.name
@@ -51,19 +61,19 @@ class timm_backbones(pl.LightningModule):
             if optimizer_name == 'Adam':
                 self.optimizer = optim.Adam(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
             elif optimizer_name == 'SGD':
-                # You can add more optimizers as needed
                 self.optimizer = optim.SGD(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
             else:
                 raise ValueError(f"Unsupported optimizer: {optimizer_name}")
         else:
             self.optimizer = None
-        print("Optimizer Used:", self.optimizer)
 
     def forward(self, x):
         return self.model(x)
 
     def configure_optimizers(self):
-        return self.optimizer
+        optimizer = self.optimizer
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
+        return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"}
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -90,9 +100,15 @@ class timm_backbones(pl.LightningModule):
 
         preds = torch.argmax(logits, dim=1)
         accuracy = self.accuracy(y, preds)
+        precision = self.precision(y, preds)
+        recall = self.recall(y, preds)
+        f1 = self.f1(y, preds)
 
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=True)
         self.log('val_acc', accuracy, prog_bar=True, on_epoch=True, on_step=True)
+        self.log('val_precision', precision, prog_bar=True, on_epoch=True, on_step=True)
+        self.log('val_recall', recall, prog_bar=True, on_epoch=True, on_step=True)
+        self.log('val_f1', f1, prog_bar=True, on_epoch=True, on_step=True)
 
         return loss
 
@@ -110,8 +126,20 @@ class timm_backbones(pl.LightningModule):
         y = y.long()
         logits = self(x)
         loss = torch.nn.functional.cross_entropy(logits, y)
+
         preds = torch.argmax(logits, dim=1)
         accuracy = self.accuracy(y, preds)
-        return {'test_loss': loss, 'test_preds': preds, 'test_targets': y, 'test_accuracy': accuracy}
+        precision = self.precision(y, preds)
+        recall = self.recall(y, preds)
+        f1 = self.f1(y, preds)
+
+        # Log test metrics
+        self.log('test_loss', loss, prog_bar=True, logger=True)
+        self.log('test_acc', accuracy, prog_bar=True, logger=True)
+        self.log('test_precision', precision, prog_bar=True, logger=True)
+        self.log('test_recall', recall, prog_bar=True, logger=True)
+        self.log('test_f1', f1, prog_bar=True, logger=True)
+
+        return {'test_loss': loss, 'test_accuracy': accuracy, 'test_precision': precision, 'test_recall': recall, 'test_f1': f1}
 
 
