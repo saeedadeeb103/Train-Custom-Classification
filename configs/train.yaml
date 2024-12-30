@@ -1,9 +1,9 @@
 
 input_type: "audio"  # Options: "audio" or "image"
-dataset_name: "emodb"
+dataset_name: "CTCemodb"
 
 model:
-  encoder: 'resnet18'
+  encoder: 'ctc'
   optimizer:
     name: Adam
     lr: 0.00001
@@ -20,7 +20,7 @@ dataset:
   split_ratios: [0.7, 0.2, 0.1]
 
 num_classes: 4
-batch_size: 4
+batch_size: 16
 max_epochs: 20
 min_epochs: 10
 output_dir: outputs

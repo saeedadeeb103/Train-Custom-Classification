@@ -12,6 +12,7 @@ from encoders import timm_backbones
 from torchaudio import transforms as T
 from hydra.core.hydra_config import HydraConfig
 from utils.random_split import stratified_random_split, normalize_ratios
+from utils.helper_functions import collate_fn
 
 
 class AudioTransform:
@@ -28,8 +29,8 @@ class AudioTransform:
         mel_spec = self.transform(waveform)
         mel_spec_db = T.AmplitudeToDB()(mel_spec)
 
-        # Add channel dimension and duplicate it to make 3 channels
-        mel_spec_db = mel_spec_db.unsqueeze(0).repeat(3, 1, 1)  # Shape: [3, height, width]
+        # Add channel dimension (single channel)
+        mel_spec_db = mel_spec_db.unsqueeze(0)  # Shape: [1, height, width]
         return mel_spec_db
 
 
@@ -39,7 +40,7 @@ def main(cfg: DictConfig) -> None:
     hydra_cfg = HydraConfig.get()
 
     # Determine dataset name based on input type
-    dataset_name = "image" if cfg.dataset_name == "image" else "emodb"
+    dataset_name = cfg.dataset_name
 
     # Print available datasets for debugging
     print(f"Available datasets: {list_datasets()}")
@@ -66,18 +67,38 @@ def main(cfg: DictConfig) -> None:
         raise ValueError(f"Unsupported input_type: {cfg.input_type}")
     
     # Define data loaders
-    train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7)
-    val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7)
-    test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7)
+    train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
+    val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
+    test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
 
     # Initialize the model
-    model = timm_backbones(
-        encoder=cfg.model.encoder,
-        num_classes=cfg.num_classes,
-        optimizer_cfg=cfg.model.optimizer,
-        l1_lambda=cfg.model.l1_lambda
-    )
+    if cfg.model.encoder == "ctc":
+        # Use CTC encoder
+        from encoders import CTCEncoderPL  # Import your CTC encoder class
+        from models.CTCencoder import CTCEncoder  # Import the encoder backbone
 
+        ctc_encoder = CTCEncoder(
+            num_classes=cfg.num_classes,
+            cnn_output_dim=256,  # Match the dimension of your Mel-spectrogram or features
+            rnn_hidden_dim=256,
+            rnn_layers=3
+        )
+
+        model = CTCEncoderPL(
+            ctc_encoder=ctc_encoder,
+            num_classes=cfg.num_classes,
+            optimizer_cfg=cfg.model.optimizer
+        )
+    else:
+        # Use the timm_backbones encoder
+        from encoders import timm_backbones
+
+        model = timm_backbones(
+            encoder=cfg.model.encoder,
+            num_classes=cfg.num_classes,
+            optimizer_cfg=cfg.model.optimizer,
+            l1_lambda=cfg.model.l1_lambda
+        )
     # Define callbacks
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
