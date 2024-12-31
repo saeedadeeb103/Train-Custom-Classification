@@ -29,9 +29,9 @@ class Wav2Vec2Classifier(pl.LightningModule):
             optimizer_weight_decay = optimizer_cfg.weight_decay
 
             if optimizer_name == 'Adam':
-                self.optimizer = optim.Adam(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
+                self.optimizer = torch.optim.Adam(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
             elif optimizer_name == 'SGD':
-                self.optimizer = optim.SGD(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
+                self.optimizer = torch.optim.SGD(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
             else:
                 raise ValueError(f"Unsupported optimizer: {optimizer_name}")
         else:
