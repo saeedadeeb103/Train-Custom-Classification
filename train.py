@@ -109,11 +109,11 @@ def main(cfg: DictConfig) -> None:
             optimizer_cfg=cfg.model.optimizer
         )
     elif cfg.model.encoder == "Wav2Vec2Classifier":
-        from encoders.transformer import Wav2Vec2Classifier
+        from encoders.transformer import Wav2Vec2Classifier, Wav2Vec2EmotionClassifier
         train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer, persistent_workers=True)
         val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer, persistent_workers=True)
         test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer,  persistent_workers=True)
-        model = Wav2Vec2Classifier(num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer)
+        model = Wav2Vec2EmotionClassifier(num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer, learning_rate= cfg.model.optimizer.lr, freeze_base=True)
     else:
         # Use the timm_backbones encoder
         from encoders.encoders import timm_backbones
