@@ -8,11 +8,11 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import EarlyStopping
 import hydra
 from datasets import list_datasets, get_dataset_by_name
-from encoders import timm_backbones
+from encoders.encoders import timm_backbones
 from torchaudio import transforms as T
 from hydra.core.hydra_config import HydraConfig
 from utils.random_split import stratified_random_split, normalize_ratios
-from utils.helper_functions import collate_fn
+from utils.helper_functions import collate_fn, collate_fn_transformer
 
 
 class AudioTransform:
@@ -58,25 +58,44 @@ def main(cfg: DictConfig) -> None:
         val_dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, subset="val", transform=transform)
         test_dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, subset="test", transform=transform)
     elif cfg.input_type == "audio":
-        transform = AudioTransform(sample_rate=cfg.dataset.sample_rate, n_mels=cfg.dataset.n_mels, n_fft= cfg.dataset.n_fft)
-        dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, transform=transform)
-        normalized_ratios = normalize_ratios(cfg.dataset.split_ratios)
-        splits = stratified_random_split(dataset, parts=normalized_ratios, targets=dataset.targets)
-        train_dataset, val_dataset, test_dataset = splits
+        if cfg.model.encoder == "ctc":
+            transform = AudioTransform(sample_rate=cfg.dataset.sample_rate, n_mels=cfg.dataset.n_mels, n_fft= cfg.dataset.n_fft)
+            dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, transform=transform)
+            normalized_ratios = normalize_ratios(cfg.dataset.split_ratios)
+            splits = stratified_random_split(dataset, parts=normalized_ratios, targets=dataset.targets)
+            train_dataset, val_dataset, test_dataset = splits
+        else:
+            from sklearn.model_selection import train_test_split
+            from torch.utils.data import Subset
+            transform = None
+            dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, transform=transform)
+            labels = dataset.labels
+            train_indices, temp_indices = train_test_split(
+                                        range(len(labels)),
+                                        test_size=0.2,
+                                        stratify=labels,
+                                        random_state=42,
+                                    )
+            val_indices, test_indices = train_test_split(
+                                        temp_indices,
+                                        test_size=0.5,
+                                        stratify=labels[temp_indices],
+                                        random_state=42,
+                                    )
+            train_dataset = Subset(dataset, train_indices)
+            val_dataset = Subset(dataset, val_indices)
+            test_dataset = Subset(dataset, test_indices)
     else:
         raise ValueError(f"Unsupported input_type: {cfg.input_type}")
-    
-    # Define data loaders
-    train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
-    val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
-    test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
 
     # Initialize the model
     if cfg.model.encoder == "ctc":
         # Use CTC encoder
-        from encoders import CTCEncoderPL  # Import your CTC encoder class
+        from encoders.encoders import CTCEncoderPL  # Import your CTC encoder class
         from models.CTCencoder import CTCEncoder  # Import the encoder backbone
-
+        train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
+        val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
+        test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
         ctc_encoder = CTCEncoder(
             num_classes=cfg.num_classes,
             cnn_output_dim=256,  # Match the dimension of your Mel-spectrogram or features
@@ -89,10 +108,18 @@ def main(cfg: DictConfig) -> None:
             num_classes=cfg.num_classes,
             optimizer_cfg=cfg.model.optimizer
         )
+    elif cfg.model.encoder == "Wav2Vec2Classifier":
+        from encoders.transformer import Wav2Vec2Classifier
+        train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer, persistent_workers=True)
+        val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer, persistent_workers=True)
+        test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer,  persistent_workers=True)
+        model = Wav2Vec2Classifier(num_classes=cfg.num_classes, learning_rate=cfg.model.optimizer)
     else:
         # Use the timm_backbones encoder
-        from encoders import timm_backbones
-
+        from encoders.encoders import timm_backbones
+        train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
+        val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
+        test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn)
         model = timm_backbones(
             encoder=cfg.model.encoder,
             num_classes=cfg.num_classes,

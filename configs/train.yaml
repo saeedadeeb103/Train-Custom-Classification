@@ -1,9 +1,8 @@
 
 input_type: "audio"  # Options: "audio" or "image"
-dataset_name: "CTCemodb"
-
+dataset_name: "TESSDataset"
 model:
-  encoder: 'ctc'
+  encoder: 'Wav2Vec2Classifier'
   optimizer:
     name: Adam
     lr: 0.00001
@@ -11,17 +10,17 @@ model:
   l1_lambda: 0.0
 
 dataset: 
-  root_path: "./data/emodb"  # Single root directory
-  sample_rate: 22050  # Only applicable for audio
+  root_path: "./data/TESS/TESS"  # Single root directory
+  sample_rate: 16000  # Only applicable for audio
   n_mels: 128
   n_fft: 1024  
   duration: 1.4  # Only applicable for audio
   target_size: [224, 224]  # Only applicable for images
   split_ratios: [0.7, 0.2, 0.1]
 
-num_classes: 4
-batch_size: 16
+num_classes: 7
+batch_size: 4
 max_epochs: 20
-min_epochs: 10
+min_epochs: 1
 output_dir: outputs
 seed: 42  # For reproducibility of random splits

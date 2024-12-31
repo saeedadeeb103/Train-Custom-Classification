@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 
 class Wav2Vec2Classifier(pl.LightningModule):
-    def __init__(self, num_classes, learning_rate=1e-4, l1_lambda=0.0):
+    def __init__(self, num_classes, optimizer_cfg = "Adam", l1_lambda=0.0):
         super(Wav2Vec2Classifier, self).__init__()
         self.save_hyperparameters()
 
@@ -23,16 +23,26 @@ class Wav2Vec2Classifier(pl.LightningModule):
         self.f1 = F1Score(task="multiclass", num_classes=num_classes)
 
         self.l1_lambda = l1_lambda
+        if optimizer_cfg is not None:
+            optimizer_name = optimizer_cfg.name
+            optimizer_lr = optimizer_cfg.lr
+            optimizer_weight_decay = optimizer_cfg.weight_decay
+
+            if optimizer_name == 'Adam':
+                self.optimizer = optim.Adam(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
+            elif optimizer_name == 'SGD':
+                self.optimizer = optim.SGD(self.parameters(), lr=optimizer_lr, weight_decay=optimizer_weight_decay)
+            else:
+                raise ValueError(f"Unsupported optimizer: {optimizer_name}")
+        else:
+            self.optimizer = None
 
     def forward(self, x, attention_mask=None):
         # Debug input shape
-        print(f"Original input shape: {x.shape}")
 
         # Ensure input shape is [batch_size, sequence_length]
         if x.dim() > 2:
             x = x.squeeze(-1)  # Remove unnecessary dimensions if present
-
-        print(f"Shape after squeeze: {x.shape}")
 
         # Pass through Wav2Vec2 backbone
         output = self.wav2vec2(x, attention_mask=attention_mask)
@@ -46,7 +56,6 @@ class Wav2Vec2Classifier(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, attention_mask, y = batch
-        print(f"Input shape: {x.shape}, Attention mask shape: {attention_mask.shape}")
 
         # Forward pass
         logits = self(x, attention_mask=attention_mask)
@@ -110,8 +119,6 @@ class Wav2Vec2Classifier(pl.LightningModule):
         return {"test_loss": loss, "test_accuracy": accuracy}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.learning_rate)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode="min", factor=0.2, patience=5, min_lr=1e-6
-        )
+        optimizer = self.optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
         return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"}

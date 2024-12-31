@@ -7,7 +7,9 @@ from typing import List, Tuple
 import shutil
 import kagglehub
 from transformers import Wav2Vec2Processor, Wav2Vec2Model
-
+import subprocess
+import zipfile
+import os
 # Constants (you may need to define these according to your requirements)
 SAMPLE_RATE = 16000  # Define the sample rate for audio processing
 DURATION = 3.0  # Duration of the audio in seconds
@@ -27,7 +29,7 @@ class TESSRawWaveformDataset(Dataset):
         self.labels = []
         self.emotions = ["happy", "sad", "angry", "neutral", "fear", "disgust", "surprise"]
         emotion_mapping = {e.lower(): idx for idx, e in enumerate(self.emotions)}
-
+        self.download_dataset_if_not_exists()
         # Load file paths and labels from nested directories
         for root, dirs, files in os.walk(root_path):
             for file_name in files:
@@ -67,19 +69,38 @@ class TESSRawWaveformDataset(Dataset):
         return self.emotions
 
     def download_dataset_if_not_exists(self):
-        if not os.path.exists(self.root_path):
-            print(f"Dataset not found at {self.root_path}. Downloading...")
-            path = kagglehub.dataset_download("ejlok1/toronto-emotional-speech-set-tess")
-            print("Downloaded dataset to:", path)
-            
-            # Ensure the destination directory exists
-            os.makedirs(self.root_path, exist_ok=True)
-            
-            for folder in os.listdir(path):
-                src = os.path.join(path, folder)
-                dest = os.path.join(self.root_path, folder)
-                if not os.path.exists(dest):
-                    shutil.move(src, dest)
+      if not os.path.exists(self.root_path):
+          print(f"Dataset not found at {self.root_path}. Downloading...")
+
+          # Ensure the destination directory exists
+          os.makedirs(self.root_path, exist_ok=True)
+
+          # Download dataset using curl
+          dataset_zip_path = os.path.join(self.root_path, "toronto-emotional-speech-set-tess.zip")
+          curl_command = [
+              "curl",
+              "-L",
+              "-o",
+              dataset_zip_path,
+              "https://www.kaggle.com/api/v1/datasets/download/ejlok1/toronto-emotional-speech-set-tess",
+          ]
+
+          try:
+              subprocess.run(curl_command, check=True)
+              print(f"Dataset downloaded to {dataset_zip_path}.")
+
+              # Extract the downloaded zip file
+              with zipfile.ZipFile(dataset_zip_path, "r") as zip_ref:
+                  zip_ref.extractall(self.root_path)
+              print(f"Dataset extracted to {self.root_path}.")
+
+              # Remove the zip file to save space
+              os.remove(dataset_zip_path)
+              print(f"Removed zip file: {dataset_zip_path}")
+
+          except subprocess.CalledProcessError as e:
+              print(f"Error occurred during dataset download: {e}")
+              raise
 
 
 # Example usage

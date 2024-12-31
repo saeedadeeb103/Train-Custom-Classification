@@ -14,10 +14,6 @@
 from torch.multiprocessing import set_start_method
 import torch
 from torch.nn.utils.rnn import pad_sequence
-import torch
-from torch.nn.utils.rnn import pad_sequence
-
-from torch.nn.utils.rnn import pad_sequence
 
 def collate_fn(batch):
     """
@@ -42,7 +38,6 @@ def collate_fn(batch):
     # Create attention mask
     attention_mask = (padded_waveforms != 0).long()  # Mask for non-padded values
     # In the training loop or DataLoader debug
-    print(f"padded_waveforms shape: {padded_waveforms.shape}, attention_mask shape: {attention_mask.shape}")
 
 
     # Convert labels to a tensor
@@ -62,9 +57,9 @@ if __name__ == "__main__":
     import torch
 
     root_path = "./data/TESS"
-    batch_size = 16
+    batch_size = 32
     num_classes = 7
-    learning_rate = 1e-4
+    learning_rate = 5e-4
 
     dataset = get_dataset_by_name("TESSDataset", root_path=root_path, transform=None)
     train_size = int(0.8 * len(dataset))
