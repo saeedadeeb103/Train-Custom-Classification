@@ -206,6 +206,28 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
         self.log("val_f1", f1, prog_bar=True, logger=True)
         return loss
 
+    def test_step(self, batch, batch_idx):
+        x, attention_mask, y = batch
+
+        # Forward pass
+        logits = self(x, attention_mask=attention_mask)
+
+        # Compute loss and metrics
+        loss = F.cross_entropy(logits, y)
+        preds = torch.argmax(logits, dim=1)
+        accuracy = self.accuracy(preds, y)
+        precision = self.precision(preds, y)
+        recall = self.recall(preds, y)
+        f1 = self.f1(preds, y)
+
+        # Log metrics
+        self.log("test_loss", loss, prog_bar=True, logger=True)
+        self.log("test_acc", accuracy, prog_bar=True, logger=True)
+        self.log("test_precision", precision, prog_bar=True, logger=True)
+        self.log("test_recall", recall, prog_bar=True, logger=True)
+        self.log("test_f1", f1, prog_bar=True, logger=True)
+
+        return {"test_loss": loss, "test_accuracy": accuracy}
     def configure_optimizers(self):
         optimizer = self.optimizer
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)

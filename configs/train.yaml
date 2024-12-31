@@ -2,10 +2,10 @@
 input_type: "audio"  # Options: "audio" or "image"
 dataset_name: "TESSDataset"
 model:
-  encoder: 'Wav2Vec2Classifier'
+  encoder: 'Wav2Vec2EmotionClassifier'
   optimizer:
     name: Adam
-    lr: 0.00001
+    lr: 0.0003
     weight_decay: 3e-4
   l1_lambda: 0.0
 
@@ -19,8 +19,8 @@ dataset:
   split_ratios: [0.7, 0.2, 0.1]
 
 num_classes: 7
-batch_size: 4
+batch_size: 32
 max_epochs: 20
-min_epochs: 1
+min_epochs: 10
 output_dir: outputs
 seed: 42  # For reproducibility of random splits
