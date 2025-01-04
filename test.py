@@ -6,8 +6,7 @@ from PIL import Image
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 from torchmetrics import Accuracy
-from dataset import CustomDataset
-from encoders import timm_backbones
+from encoders.encoders import timm_backbones
 from omegaconf import DictConfig
 import hydra
 

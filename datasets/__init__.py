@@ -3,10 +3,14 @@ from torch.utils.data import Dataset
 
 from .image_dataset import CustomDataset
 from .audio_dataset import EmodbDataset
+from .ctc_audio_dataclass import CTCEmodbDataset
+from .TESS_Dataset import TESSRawWaveformDataset
 
 __dataset_mapper__ = {
     "image": CustomDataset,
     "emodb": EmodbDataset,
+    'CTCemodb': CTCEmodbDataset,
+    'TESSDataset': TESSRawWaveformDataset
 }
 
 def list_datasets() -> List[str]:

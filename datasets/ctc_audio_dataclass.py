@@ -7,11 +7,12 @@ import numpy as np
 from torch.utils.data import Dataset
 import librosa
 import torch
+from torch.nn.utils.rnn import pad_sequence
 
 SAMPLE_RATE = 22050
-DURATION = 1.4  # second
+DURATION = 1.4  # seconds
 
-class EmodbDataset(Dataset):
+class CTCEmodbDataset(Dataset):
     __url__ = "http://www.emodb.bilderbar.info/download/download.zip"
     __labels__ = ("angry", "happy", "neutral", "sad")
     __suffixes__ = {
@@ -40,11 +41,11 @@ class EmodbDataset(Dataset):
             for label, suffixes in self.__suffixes__.items():
                 if suffix in suffixes:
                     ids.append(os.path.join(self.audio_root_path, audio_file))
-                    targets.append(self.label2id(label))
+                    targets.append(self.label2id(label))  # Store as integers
                     break
 
         self.ids = ids
-        self.targets = np.array(targets, dtype=np.int64)
+        self.targets = targets  # Target sequences as a list of lists
         self.transform = transform
 
     def _ensure_dataset(self):
@@ -59,10 +60,7 @@ class EmodbDataset(Dataset):
         """
         Downloads and extracts the dataset zip file.
         """
-        # Ensure the root path exists
         os.makedirs(self.root_path, exist_ok=True)
-
-        # Download the dataset
         zip_path = os.path.join(self.root_path, "emodb.zip")
         with requests.get(self.__url__, stream=True) as r:
             r.raise_for_status()
@@ -78,43 +76,51 @@ class EmodbDataset(Dataset):
                     f.write(chunk)
                     bar.update(len(chunk))
 
-        # Extract the dataset
         print("Extracting dataset...")
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(self.root_path)
 
-        # Clean up the zip file
         os.remove(zip_path)
 
     def __len__(self):
         return len(self.ids)
 
-    def __getitem__(self, idx: int) -> Tuple:
-        target = self.targets[idx]
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, int, int]:
+        """
+        Returns:
+            x (torch.Tensor): Input sequence (audio features or waveform)
+            y (torch.Tensor): Target sequence (labels or tokenized transcription)
+            input_length (int): Length of input sequence
+            target_length (int): Length of target sequence
+        """
+        target = torch.tensor([self.targets[idx]], dtype=torch.long) 
         audio = self.load_audio(self.ids[idx])  # Should return a numpy array
 
         if self.transform:
-            audio = self.transform(audio)  # Apply transform
+            audio = self.transform(audio)
 
-        return audio, target
+        # Input length (for CTC)
+        input_length = audio.shape[-1]  # Last dimension is the time dimension
+        target_length = len(target)  # Length of target sequence
+
+        return audio, target, input_length, target_length
 
     @staticmethod
     def id2label(idx: int) -> str:
-        return EmodbDataset.__labels__[idx]
+        return CTCEmodbDataset.__labels__[idx]
 
     @staticmethod
     def label2id(label: str) -> int:
-        if label not in EmodbDataset.__labels__:
+        if label not in CTCEmodbDataset.__labels__:
             raise ValueError(f"Unknown label: {label}")
-        return EmodbDataset.__labels__.index(label)
+        return CTCEmodbDataset.__labels__.index(label)
 
     @staticmethod
-    def load_audio(audio_file_path: str) -> np.ndarray:
+    def load_audio(audio_file_path: str) -> torch.Tensor:
         audio, sr = librosa.load(audio_file_path, sr=SAMPLE_RATE, duration=DURATION)
         assert SAMPLE_RATE == sr, "broken audio file"
-        # Convert numpy array to PyTorch tensor
         return torch.tensor(audio, dtype=torch.float32)
 
     @staticmethod
     def get_labels() -> List[str]:
-        return list(EmodbDataset.__labels__)
+        return list(CTCEmodbDataset.__labels__)
