@@ -12,8 +12,7 @@ from encoders.encoders import timm_backbones
 from torchaudio import transforms as T
 from hydra.core.hydra_config import HydraConfig
 from utils.random_split import stratified_random_split, normalize_ratios
-from utils.helper_functions import collate_fn, collate_fn_transformer
-
+from utils.helper_functions import collate_fn, collate_fn_transformer, save_test_data
 
 class AudioTransform:
     def __init__(self, sample_rate=22050, n_mels=128, n_fft=1024, hop_length=512):
@@ -85,6 +84,9 @@ def main(cfg: DictConfig) -> None:
             train_dataset = Subset(dataset, train_indices)
             val_dataset = Subset(dataset, val_indices)
             test_dataset = Subset(dataset, test_indices)
+            save_test_data(test_dataset=test_dataset, dataset=dataset, save_dir="./data/test_TESS")
+            
+
     else:
         raise ValueError(f"Unsupported input_type: {cfg.input_type}")
 
@@ -102,7 +104,6 @@ def main(cfg: DictConfig) -> None:
             rnn_hidden_dim=256,
             rnn_layers=3
         )
-
         model = CTCEncoderPL(
             ctc_encoder=ctc_encoder,
             num_classes=cfg.num_classes,

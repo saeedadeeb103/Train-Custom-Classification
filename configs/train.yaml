@@ -2,7 +2,7 @@
 input_type: "audio"  # Options: "audio" or "image"
 dataset_name: "TESSDataset"
 model:
-  encoder: 'Wav2Vec2EmotionClassifier'
+  encoder: 'Wav2Vec2Classifier'
   optimizer:
     name: Adam
     lr: 0.0003
@@ -10,7 +10,7 @@ model:
   l1_lambda: 0.0
 
 dataset: 
-  root_path: "./data/TESS/TESS"  # Single root directory
+  root_path: "./data/TESS"  # Single root directory
   sample_rate: 16000  # Only applicable for audio
   n_mels: 128
   n_fft: 1024  
