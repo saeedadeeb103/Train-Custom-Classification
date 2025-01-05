@@ -23,13 +23,13 @@ def main(cfg: DictConfig) -> None:
     hydra_cfg = HydraConfig.get()
 
     config = {
-        "model_path": "model.pth",
+        "model_path": "/kaggle/working/Train-Custom-Classification/outputs/2025-01-05/12-37-22/model.pth",
         "dataset_name": "TESSDataset",
         "root_path": "data/TESS/TESS/YAF_angry",
         "batch_size": 32,
         "num_classes": 7,
         "sample_file": None,  # Provide a path to a single audio file for inference
-        "test_folder": "data/test_TESS"
+        "test_folder": "/kaggle/working/Train-Custom-Classification/data/test_TESS"
     }
     model = Wav2Vec2EmotionClassifier(num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer, learning_rate= cfg.model.optimizer.lr, freeze_base=True)
     model.load_state_dict(torch.load(config["model_path"]))
