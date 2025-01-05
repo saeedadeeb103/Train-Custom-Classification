@@ -132,6 +132,7 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
     def __init__(self, num_classes, learning_rate=1e-4, freeze_base=False, optimizer_cfg="AdamW"):
         super(Wav2Vec2EmotionClassifier, self).__init__()
         self.save_hyperparameters()
+        from peft import LoraConfig, get_peft_model
 
         # Load a pre-trained Wav2Vec2 model optimized for emotion recognition
         self.model = Wav2Vec2ForSequenceClassification.from_pretrained(
@@ -139,6 +140,14 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
             num_labels=num_classes,
         )
 
+        lora_config = LoraConfig(
+            r = 8, 
+            lora_alpha=16, 
+            target_modules=["attention"],
+            lora_dropout=0.1,
+            bias="none",
+        )
+        self.model = get_peft_model(self.model, lora_config)
         # Optionally freeze the Wav2Vec2 base layers
         if freeze_base:
             for param in self.model.wav2vec2.parameters():
