@@ -49,41 +49,71 @@ def main(cfg: DictConfig) -> None:
         print(f"Probabilities: {probabilities}")
     elif test_folder:
         import glob
-        from sklearn.metrics import accuracy_score, classification_report
+        from torchmetrics import Accuracy, Precision, Recall, F1Score
 
-        audio_files = glob.glob(os.path.join(test_folder, "**/*.wav"), recursive=True)
-        predictions = []
-        actual_labels = []
+        # Initialize metrics
+        accuracy_metric = Accuracy(task="multiclass", num_classes=len(emotions))
+        precision_metric = Precision(task="multiclass", num_classes=len(emotions), average="macro")
+        recall_metric = Recall(task="multiclass", num_classes=len(emotions), average="macro")
+        f1_metric = F1Score(task="multiclass", num_classes=len(emotions), average="macro")
 
         # Mapping folder names to labels based on emotions
         emotions = ["happy", "sad", "angry", "neutral", "fear", "disgust", "surprise"]
         label_mapping = {str(idx): emotion for idx, emotion in enumerate(emotions)}
 
-        for file_path in audio_files:
-            # Infer the true label from the parent folder name
-            true_label_name = os.path.basename(os.path.dirname(file_path))
-            true_label = int(true_label_name)  # Folder name is the numeric label
+        # Gather all audio files from the folder
+        audio_files = glob.glob(os.path.join(test_folder, "**/*.wav"), recursive=True)
 
-            waveform = preprocess_audio(file_path)
+        # Process files in batches
+        batch_size = 32  # Match the batch size used in test_loader
+        audio_batches = [audio_files[i:i + batch_size] for i in range(0, len(audio_files), batch_size)]
+
+        for batch in audio_batches:
+            waveforms = []
+            true_labels = []
+
+            for file_path in batch:
+                # Infer the true label from the parent folder name
+                true_label_name = os.path.basename(os.path.dirname(file_path))
+                true_label = int(true_label_name)  # Folder name is the numeric label
+                true_labels.append(true_label)
+
+                # Preprocess the audio
+                waveform = preprocess_audio(file_path)
+                waveforms.append(waveform)
+
+            # Combine waveforms into a batch
+            waveforms = torch.cat(waveforms).unsqueeze(1)  # Add batch and channel dimensions
+            true_labels = torch.tensor(true_labels)
+
+            # Run the model inference
             with torch.no_grad():
-                logits = model(waveform)
+                logits = model(waveforms)
                 probabilities = torch.nn.functional.softmax(logits, dim=-1)
-                predicted_class = torch.argmax(probabilities, dim=-1).item()
+                predicted_classes = torch.argmax(probabilities, dim=-1)
 
-            # Store predictions and actual labels for evaluation
-            predictions.append(predicted_class)
-            actual_labels.append(true_label)
+            # Update metrics
+            accuracy_metric.update(predicted_classes, true_labels)
+            precision_metric.update(predicted_classes, true_labels)
+            recall_metric.update(predicted_classes, true_labels)
+            f1_metric.update(predicted_classes, true_labels)
 
-            # Print individual file prediction and match status
-            match_status = "CORRECT" if predicted_class == true_label else "INCORRECT"
-            print(f"{file_path} -> Predicted: {predicted_class} ({label_mapping[str(predicted_class)]}), "
-                f"Actual: {true_label} ({label_mapping[str(true_label)]}) [{match_status}]")
+            # Print individual file predictions
+            for idx, file_path in enumerate(batch):
+                predicted_class = predicted_classes[idx].item()
+                true_label = true_labels[idx].item()
+                match_status = "CORRECT" if predicted_class == true_label else "INCORRECT"
+                print(f"{file_path} -> Predicted: {predicted_class} ({label_mapping[str(predicted_class)]}), "
+                    f"Actual: {true_label} ({label_mapping[str(true_label)]}) [{match_status}]")
 
-        # Print overall accuracy and classification report
-        accuracy = accuracy_score(actual_labels, predictions)
+        # Compute and print overall metrics
+        accuracy = accuracy_metric.compute()
+        precision = precision_metric.compute()
+        recall = recall_metric.compute()
+        f1 = f1_metric.compute()
+
         print(f"\nOverall Accuracy: {accuracy:.4f}")
-        print("\nClassification Report:")
-        print(classification_report(actual_labels, predictions, target_names=emotions))
+        print(f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}")
     else:
         # Test on a dataset
         transform = None  # Use the appropriate transform if needed
