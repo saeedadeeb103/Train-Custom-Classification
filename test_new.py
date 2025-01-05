@@ -64,49 +64,54 @@ def main(cfg: DictConfig) -> None:
 
         # Get all audio files in the test folder
         audio_files = glob.glob(os.path.join(test_folder, "**/*.wav"), recursive=True)
-        waveforms = []
-        true_labels = []
+        
+        batch_size = 32  # Define a smaller batch size to reduce memory usage
+        audio_batches = [audio_files[i:i + batch_size] for i in range(0, len(audio_files), batch_size)]
 
-        for file_path in audio_files:
-            # Infer the true label from the parent folder name
-            true_label_name = os.path.basename(os.path.dirname(file_path))
-            true_label = int(true_label_name)  # Folder name is the numeric label
-            true_labels.append(true_label)
+        for batch in audio_batches:
+            waveforms = []
+            true_labels = []
 
-            # Preprocess the waveform
-            waveform = preprocess_audio(file_path)
-            waveforms.append(torch.tensor(waveform).squeeze())
+            for file_path in batch:
+                # Infer the true label from the parent folder name
+                true_label_name = os.path.basename(os.path.dirname(file_path))
+                true_label = int(true_label_name)  # Folder name is the numeric label
+                true_labels.append(true_label)
 
-        # Pad sequences to the same length
-        padded_waveforms = pad_sequence(waveforms, batch_first=True)
+                # Preprocess the waveform
+                waveform = preprocess_audio(file_path)
+                waveforms.append(torch.tensor(waveform).squeeze())
 
-        # Create attention mask
-        attention_mask = (padded_waveforms != 0).long()
+            # Pad sequences to the same length
+            padded_waveforms = pad_sequence(waveforms, batch_first=True)
 
-        # Convert true labels to tensor
-        true_labels = torch.tensor(true_labels, dtype=torch.long)
+            # Create attention mask
+            attention_mask = (padded_waveforms != 0).long()
 
-        # Run the model
-        with torch.no_grad():
-            logits = model(padded_waveforms, attention_mask=attention_mask)
-            probabilities = torch.nn.functional.softmax(logits, dim=-1)
-            predicted_classes = torch.argmax(probabilities, dim=-1)
+            # Convert true labels to tensor
+            true_labels = torch.tensor(true_labels, dtype=torch.long)
 
-        # Update metrics
-        accuracy_metric.update(predicted_classes, true_labels)
-        precision_metric.update(predicted_classes, true_labels)
-        recall_metric.update(predicted_classes, true_labels)
-        f1_metric.update(predicted_classes, true_labels)
+            # Run the model for the current batch
+            with torch.no_grad():
+                logits = model(padded_waveforms, attention_mask=attention_mask)
+                probabilities = torch.nn.functional.softmax(logits, dim=-1)
+                predicted_classes = torch.argmax(probabilities, dim=-1)
 
-        # Print individual predictions
-        for idx, file_path in enumerate(audio_files):
-            predicted_class = predicted_classes[idx].item()
-            true_label = true_labels[idx].item()
-            match_status = "CORRECT" if predicted_class == true_label else "INCORRECT"
-            print(f"{file_path} -> Predicted: {predicted_class} ({label_mapping[str(predicted_class)]}), "
-                f"Actual: {true_label} ({label_mapping[str(true_label)]}) [{match_status}]")
+            # Update metrics for the current batch
+            accuracy_metric.update(predicted_classes, true_labels)
+            precision_metric.update(predicted_classes, true_labels)
+            recall_metric.update(predicted_classes, true_labels)
+            f1_metric.update(predicted_classes, true_labels)
 
-        # Compute and print metrics
+            # Print individual predictions for the batch
+            for idx, file_path in enumerate(batch):
+                predicted_class = predicted_classes[idx].item()
+                true_label = true_labels[idx].item()
+                match_status = "CORRECT" if predicted_class == true_label else "INCORRECT"
+                print(f"{file_path} -> Predicted: {predicted_class} ({label_mapping[str(predicted_class)]}), "
+                    f"Actual: {true_label} ({label_mapping[str(true_label)]}) [{match_status}]")
+
+        # Compute and print overall metrics
         accuracy = accuracy_metric.compute()
         precision = precision_metric.compute()
         recall = recall_metric.compute()
