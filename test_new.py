@@ -52,13 +52,13 @@ def main(cfg: DictConfig) -> None:
         from torchmetrics import Accuracy, Precision, Recall, F1Score
 
         # Initialize metrics
+        emotions = ["happy", "sad", "angry", "neutral", "fear", "disgust", "surprise"]
         accuracy_metric = Accuracy(task="multiclass", num_classes=len(emotions))
         precision_metric = Precision(task="multiclass", num_classes=len(emotions), average="macro")
         recall_metric = Recall(task="multiclass", num_classes=len(emotions), average="macro")
         f1_metric = F1Score(task="multiclass", num_classes=len(emotions), average="macro")
 
         # Mapping folder names to labels based on emotions
-        emotions = ["happy", "sad", "angry", "neutral", "fear", "disgust", "surprise"]
         label_mapping = {str(idx): emotion for idx, emotion in enumerate(emotions)}
 
         # Gather all audio files from the folder
