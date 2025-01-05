@@ -8,19 +8,20 @@ import torch.nn.functional as F
 from peft.tuners.lora import LoraLayer
 
 class LinearWithLoRA(torch.nn.Module):
-    def __init__(self, original_layer, r=8, alpha=16):
+    def __init__(self, base_layer, r=8, alpha=16):
         super().__init__()
-        self.original_layer = original_layer
+        self.base_layer = base_layer
         self.lora = LoraLayer(
+            base_layer=base_layer,  # Pass the original layer here
             r=r,
             lora_alpha=alpha,
-            fan_in_fan_out=False,  # Depends on the implementation
-            bias=True,
+            fan_in_fan_out=False,  # Adjust based on your use case
+            bias=base_layer.bias is not None,
         )
-        self.lora.freeze()
+        self.lora.freeze()  # Freeze LoRA layers initially
 
     def forward(self, x):
-        return self.original_layer(x) + self.lora(x)
+        return self.base_layer(x) + self.lora(x)
     
 
 
