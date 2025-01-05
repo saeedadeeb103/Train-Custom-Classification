@@ -5,40 +5,6 @@ from transformers import Wav2Vec2Model, Wav2Vec2ForSequenceClassification
 import torch.nn.functional as F
 
 
-from peft.tuners.lora import LoraLayer
-
-class LinearWithLoRA(torch.nn.Module):
-    def __init__(self, base_layer, r=8, alpha=16):
-        super().__init__()
-        self.base_layer = base_layer
-        self.lora = LoraLayer(
-            base_layer=base_layer,  # Pass the original layer here
-            r=r,
-            lora_alpha=alpha,
-            fan_in_fan_out=False,  # Adjust based on your use case
-            bias=base_layer.bias is not None,
-        )
-        self.lora.freeze()  # Freeze LoRA layers initially
-
-    def forward(self, x):
-        return self.base_layer(x) + self.lora(x)
-    
-
-
-def apply_lora_to_model(model, r=8, alpha=16):
-    for name, module in model.named_modules():
-        if isinstance(module, torch.nn.Linear):
-            parent_module, module_name = get_parent_module(model, name)
-            setattr(parent_module, module_name, LinearWithLoRA(module, r, alpha))
-
-def get_parent_module(model, module_name):
-    names = module_name.split(".")
-    module = model
-    for name in names[:-1]:
-        module = getattr(module, name)
-    return module, names[-1]
-
-
 class Wav2Vec2Classifier(pl.LightningModule):
     def __init__(self, num_classes, optimizer_cfg = "Adam", l1_lambda=0.0):
         super(Wav2Vec2Classifier, self).__init__()
@@ -166,15 +132,12 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
     def __init__(self, num_classes, learning_rate=1e-4, freeze_base=False, optimizer_cfg="AdamW"):
         super(Wav2Vec2EmotionClassifier, self).__init__()
         self.save_hyperparameters()
-        from peft import LoraConfig, get_peft_model
 
         # Load a pre-trained Wav2Vec2 model optimized for emotion recognition
         self.model = Wav2Vec2ForSequenceClassification.from_pretrained(
             "audeering/wav2vec2-large-robust-12-ft-emotion-msp-dim",
             num_labels=num_classes,
         )
-
-        apply_lora_to_model(self.model)
         # Optionally freeze the Wav2Vec2 base layers
         if freeze_base:
             for param in self.model.wav2vec2.parameters():
