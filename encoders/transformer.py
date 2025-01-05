@@ -5,6 +5,39 @@ from transformers import Wav2Vec2Model, Wav2Vec2ForSequenceClassification
 import torch.nn.functional as F
 
 
+from peft.tuners.lora import LoraLayer
+
+class LinearWithLoRA(torch.nn.Module):
+    def __init__(self, original_layer, r=8, alpha=16):
+        super().__init__()
+        self.original_layer = original_layer
+        self.lora = LoraLayer(
+            r=r,
+            lora_alpha=alpha,
+            fan_in_fan_out=False,  # Depends on the implementation
+            bias=True,
+        )
+        self.lora.freeze()
+
+    def forward(self, x):
+        return self.original_layer(x) + self.lora(x)
+    
+
+
+def apply_lora_to_model(model, r=8, alpha=16):
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            parent_module, module_name = get_parent_module(model, name)
+            setattr(parent_module, module_name, LinearWithLoRA(module, r, alpha))
+
+def get_parent_module(model, module_name):
+    names = module_name.split(".")
+    module = model
+    for name in names[:-1]:
+        module = getattr(module, name)
+    return module, names[-1]
+
+
 class Wav2Vec2Classifier(pl.LightningModule):
     def __init__(self, num_classes, optimizer_cfg = "Adam", l1_lambda=0.0):
         super(Wav2Vec2Classifier, self).__init__()
@@ -140,14 +173,7 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
             num_labels=num_classes,
         )
 
-        lora_config = LoraConfig(
-            r = 8, 
-            lora_alpha=16, 
-            target_modules=["attention"],
-            lora_dropout=0.1,
-            bias="none",
-        )
-        self.model = get_peft_model(self.model, lora_config)
+        apply_lora_to_model(self.model)
         # Optionally freeze the Wav2Vec2 base layers
         if freeze_base:
             for param in self.model.wav2vec2.parameters():
