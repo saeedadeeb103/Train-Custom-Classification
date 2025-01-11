@@ -163,7 +163,7 @@ def main(cfg: DictConfig) -> None:
     trainer.test(model, test_loader)
 
     # Save the trained model
-    model_path = f"{hydra_cfg.runtime.output_dir}/model.pth"
+    model_path = f"{hydra_cfg.runtime.output_dir}/lora_only_model.pth"
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
     import os

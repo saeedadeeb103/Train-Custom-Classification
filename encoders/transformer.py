@@ -185,13 +185,15 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
             layer.feed_forward.output_dense = LinearWithLoRA(layer.feed_forward.output_dense, rank, alpha)
 
     def state_dict(self, *args, **kwargs):
-        # Only save trainable parameters
+        # Save only LoRA and classifier/projector parameters
         state = super().state_dict(*args, **kwargs)
-        return {k: v for k, v in state.items() if any(p.requires_grad for p in self.parameters())}
+        return {k: v for k, v in state.items() if "lora" in k or "classifier" in k or "projector" in k}
 
     def load_state_dict(self, state_dict, strict=True):
-        # Only load trainable parameters
-        super().load_state_dict(state_dict, strict=False)
+        missing_keys, unexpected_keys = super().load_state_dict(state_dict, strict=False)
+        if missing_keys or unexpected_keys:
+            print(f"Missing keys: {missing_keys}")
+            print(f"Unexpected keys: {unexpected_keys}")
 
     def forward(self, x, attention_mask=None):
         return self.model(x, attention_mask=attention_mask).logits
@@ -256,6 +258,11 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
         return {"test_loss": loss, "test_accuracy": accuracy}
 
     def configure_optimizers(self):
-        optimizer = self.optimizer
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
+        optimizer = torch.optim.AdamW(
+            filter(lambda p: p.requires_grad, self.parameters()), 
+            lr=self.learning_rate
+        )
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.2, patience=10, min_lr=5e-5
+        )
         return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "val_loss"}
