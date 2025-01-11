@@ -114,7 +114,8 @@ def main(cfg: DictConfig) -> None:
         train_loader = DataLoader(train_dataset, sampler=RandomSampler(train_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer, persistent_workers=True)
         val_loader = DataLoader(val_dataset, sampler=SequentialSampler(val_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer, persistent_workers=True)
         test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=cfg.batch_size, num_workers=7, collate_fn=collate_fn_transformer,  persistent_workers=True)
-        model = Wav2Vec2EmotionClassifier(num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer, learning_rate= cfg.model.optimizer.lr, freeze_base=True)
+        model = Wav2Vec2EmotionClassifier(num_classes=cfg.num_classes, optimizer_cfg=cfg.model.optimizer, learning_rate=cfg.model.optimizer.lr, freeze_base=True)
+
     else:
         # Use the timm_backbones encoder
         from encoders.encoders import timm_backbones
@@ -165,6 +166,8 @@ def main(cfg: DictConfig) -> None:
     model_path = f"{hydra_cfg.runtime.output_dir}/model.pth"
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
+    import os
+    print(f"Model size: {os.path.getsize(model_path) / 1024 / 1024:.2f} MB")
 
 if __name__ == "__main__":
     main()

@@ -167,10 +167,12 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
                 raise ValueError(f"Unsupported optimizer: {optimizer_name}")
         else:
             self.optimizer = None
+
+        # Apply LoRA
         low_rank = 8
         lora_alpha = 16
-
         self.apply_lora(low_rank, lora_alpha)
+
     def apply_lora(self, rank, alpha):
         # Replace specific linear layers with LinearWithLoRA
         for layer in self.model.wav2vec2.encoder.layers:
@@ -252,6 +254,7 @@ class Wav2Vec2EmotionClassifier(pl.LightningModule):
         self.log("test_f1", f1, prog_bar=True, logger=True)
 
         return {"test_loss": loss, "test_accuracy": accuracy}
+
     def configure_optimizers(self):
         optimizer = self.optimizer
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.2, patience=20, min_lr=5e-5)
