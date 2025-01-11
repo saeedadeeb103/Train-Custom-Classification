@@ -3,6 +3,7 @@ import torch
 from torchmetrics import Accuracy, Precision, Recall, F1Score
 from transformers import Wav2Vec2Model, Wav2Vec2ForSequenceClassification
 import torch.nn.functional as F
+from models.lora import LinearWithLoRA, LoRALayer
 
 
 class Wav2Vec2Classifier(pl.LightningModule):
@@ -40,6 +41,23 @@ class Wav2Vec2Classifier(pl.LightningModule):
                 raise ValueError(f"Unsupported optimizer: {optimizer_name}")
         else:
             self.optimizer = None
+
+        low_rank = 8
+        lora_alpha = 16
+
+        self.apply_lora(low_rank, lora_alpha)
+    def apply_lora(self, rank, alpha):
+        # Replace specific linear layers with LinearWithLoRA
+        for layer in self.model.wav2vec2.encoder.layers:
+            # Apply LoRA to attention layers
+            layer.attention.q_proj = LinearWithLoRA(layer.attention.q_proj, rank, alpha)
+            layer.attention.k_proj = LinearWithLoRA(layer.attention.k_proj, rank, alpha)
+            layer.attention.v_proj = LinearWithLoRA(layer.attention.v_proj, rank, alpha)
+            layer.attention.out_proj = LinearWithLoRA(layer.attention.out_proj, rank, alpha)
+
+            # Apply LoRA to feedforward layers
+            layer.feed_forward.intermediate_dense = LinearWithLoRA(layer.feed_forward.intermediate_dense, rank, alpha)
+            layer.feed_forward.output_dense = LinearWithLoRA(layer.feed_forward.output_dense, rank, alpha)
 
     def forward(self, x, attention_mask=None):
         # Debug input shape
