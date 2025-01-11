@@ -3,7 +3,7 @@ import torch.nn as nn
 
 class LoRALayer(nn.Module):
     def __init__(self, input_dim, output_dim, rank, alpha):
-        super(self).__init__()
+        super().__init__()
         std_dev = 1 / torch.sqrt(torch.tensor(rank).float())
         self.A = nn.Parameter(torch.randn(input_dim, rank) * std_dev)  # Low-rank matrix A
         self.B = nn.Parameter(torch.zeros(rank, output_dim))  # Low-rank matrix B
