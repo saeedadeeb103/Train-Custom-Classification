@@ -132,7 +132,7 @@ class Wav2Vec2Classifier(pl.LightningModule):
 
 class Wav2Vec2EmotionClassifier(pl.LightningModule):
     def __init__(self, num_classes, learning_rate=1e-4, freeze_base=False, optimizer_cfg="AdamW"):
-        super(Wav2Vec2EmotionClassifier, self).__init__()
+        super().__init__()
         self.save_hyperparameters()
 
         # Load a pre-trained Wav2Vec2 model optimized for emotion recognition
