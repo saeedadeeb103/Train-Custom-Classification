@@ -56,6 +56,7 @@ def main(cfg: DictConfig) -> None:
         train_dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, subset="train", transform=transform)
         val_dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, subset="val", transform=transform)
         test_dataset = get_dataset_by_name(dataset_name, root_path=cfg.dataset.root_path, subset="test", transform=transform)
+
     elif cfg.input_type == "audio":
         if cfg.model.encoder == "ctc":
             transform = AudioTransform(sample_rate=cfg.dataset.sample_rate, n_mels=cfg.dataset.n_mels, n_fft= cfg.dataset.n_fft)
@@ -63,6 +64,31 @@ def main(cfg: DictConfig) -> None:
             normalized_ratios = normalize_ratios(cfg.dataset.split_ratios)
             splits = stratified_random_split(dataset, parts=normalized_ratios, targets=dataset.targets)
             train_dataset, val_dataset, test_dataset = splits
+
+        if dataset_name == "MSPPodcastDataset" and cfg.dataset.partition_path:
+            # Use partition_path to create train/val/test datasets
+            train_dataset = get_dataset_by_name(
+                dataset_name,
+                labels_path=cfg.dataset.labels_path,
+                audio_dir=cfg.dataset.audio_dir,
+                partition_path=cfg.dataset.partition_path,
+                transform=transform
+            )
+            # Create separate datasets for each partition
+            partition_dict = train_dataset.partition_dict
+            indices = {"train": [], "val": [], "test": []}
+            for idx, audio_path in enumerate(train_dataset.audio_files):
+                filename = os.path.basename(audio_path)
+                partition = partition_dict.get(filename, "")
+                if partition in indices:
+                    indices[partition].append(idx)
+
+            train_dataset = Subset(train_dataset, indices["train"]) if indices["train"] else None
+            val_dataset = Subset(train_dataset, indices["val"]) if indices["val"] else None
+            test_dataset = Subset(train_dataset, indices["test"]) if indices["test"] else None
+
+            if not all([train_dataset, val_dataset, test_dataset]):
+                raise ValueError("Partition file must define 'train', 'val', and 'test' splits.")
         else:
             from sklearn.model_selection import train_test_split
             from torch.utils.data import Subset
